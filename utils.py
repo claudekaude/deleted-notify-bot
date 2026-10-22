@@ -185,7 +185,8 @@ async def download_media(bot: Bot, file_id: str, content_type: str | None, dest_
 
 
 async def send_saved_media(bot: Bot, chat_id: int, content_type: str | None, file_id: str | None,
-                           caption: str | None = None, local_path: str | None = None) -> bool:
+                           caption: str | None = None, local_path: str | None = None,
+                           disable_notification: bool = False) -> bool:
     """
     Пересылает сохранённое медиа под спойлером. Сначала пытается отправить локальную
     копию (local_path), при её отсутствии/повреждении — по file_id. False, если тип
@@ -195,7 +196,7 @@ async def send_saved_media(bot: Bot, chat_id: int, content_type: str | None, fil
         return False
     method_name, can_spoiler, can_caption = _MEDIA_SEND[content_type]
     method = getattr(bot, method_name)
-    kwargs: dict = {}
+    kwargs: dict = {"disable_notification": disable_notification}
     if can_spoiler:
         kwargs["has_spoiler"] = True
     if can_caption and caption:

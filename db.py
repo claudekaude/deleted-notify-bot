@@ -53,6 +53,9 @@ CREATE TABLE IF NOT EXISTS users (
     first_name            TEXT,
     language              TEXT,                 -- 'ru' / 'en', NULL пока не выбран
     notifications_enabled INTEGER NOT NULL DEFAULT 1,
+    notify_deleted        INTEGER NOT NULL DEFAULT 1,  -- уведомлять об удалениях
+    notify_edited         INTEGER NOT NULL DEFAULT 1,  -- уведомлять о правках
+    silent_mode           INTEGER NOT NULL DEFAULT 0,  -- доставлять без звука
     trial_used            INTEGER NOT NULL DEFAULT 0,
     created_at            INTEGER NOT NULL,
     updated_at            INTEGER NOT NULL
@@ -159,6 +162,15 @@ class Database:
 
     async def _migrate(self) -> None:
         """Добавляет новые колонки в базу, созданную старой версией бота."""
+        # users: настройки уведомлений
+        async with self.conn.execute("PRAGMA table_info(users)") as cur:
+            ucols = {row[1] for row in await cur.fetchall()}
+        for name in ("notify_deleted", "notify_edited", "silent_mode"):
+            if name not in ucols:
+                default = "0" if name == "silent_mode" else "1"
+                await self.conn.execute(
+                    f"ALTER TABLE users ADD COLUMN {name} INTEGER NOT NULL DEFAULT {default}")
+                log.info("Миграция: добавлена колонка users.%s", name)
         async with self.conn.execute("PRAGMA table_info(messages)") as cur:
             columns = {row[1] for row in await cur.fetchall()}
         # name -> тип колонки
@@ -231,6 +243,29 @@ class Database:
             "UPDATE users SET notifications_enabled = ?, updated_at = ? WHERE user_id = ?",
             (int(enabled), now_ts(), user_id),
         )
+
+    # Разрешённые для переключения настройки уведомлений
+    NOTIFY_PREFS = ("notify_deleted", "notify_edited", "silent_mode")
+
+    async def get_prefs(self, user_id: int) -> dict:
+        """Настройки уведомлений пользователя (с безопасными значениями по умолчанию)."""
+        row = await self._fetchone(
+            "SELECT notify_deleted, notify_edited, silent_mode FROM users WHERE user_id = ?", (user_id,))
+        if row is None:
+            return {"notify_deleted": 1, "notify_edited": 1, "silent_mode": 0}
+        return dict(row)
+
+    async def toggle_pref(self, user_id: int, key: str) -> int:
+        """Переключает булеву настройку (0/1). Возвращает новое значение."""
+        if key not in self.NOTIFY_PREFS:
+            raise ValueError(f"Недопустимая настройка: {key}")
+        prefs = await self.get_prefs(user_id)
+        new_val = 0 if prefs.get(key) else 1
+        await self._execute(
+            f"UPDATE users SET {key} = ?, updated_at = ? WHERE user_id = ?",
+            (new_val, now_ts(), user_id),
+        )
+        return new_val
 
     # ------------------------------------------------------------------ subscriptions
 

@@ -243,6 +243,10 @@ async def on_edited_business_message(message: Message, bot: Bot, db: Database, c
     user = await db.get_user(owner_id)
     if user is None or not user["notifications_enabled"]:
         return
+    prefs = await db.get_prefs(owner_id)
+    if not prefs["notify_edited"]:
+        return  # правка сохранена в истории, но уведомление отключено настройкой
+    silent = bool(prefs["silent_mode"])
     lang = normalize_lang(user["language"])
 
     author = fmt_person_short(
@@ -251,16 +255,21 @@ async def on_edited_business_message(message: Message, bot: Bot, db: Database, c
         full_name(message.from_user.first_name, message.from_user.last_name) if message.from_user
         else (row and row["from_name"]),
     )
+    # Для медиа — обозначение типа вложения в шапке (📷 фото и т.п.)
+    ctype = row["content_type"] if row else None
+    head = t(lang, "edit_head_media", author=author, type=ctype) if ctype and ctype != "text" \
+        else t(lang, "edit_head", author=author)
     old_block = _quote(lang, old_text, MAX_TEXT_SINGLE) or t(lang, "edit_old_unavailable")
     new_block = _quote(lang, new_text, MAX_TEXT_SINGLE)
+    # Порядок по ТЗ: сначала «Новое», затем «Старое»
     body = (
-        t(lang, "edit_head", author=author) + "\n"
+        head + "\n"
         + t(lang, "edit_time", edited=fmt_ts(edited_at, config.timezone)) + "\n\n"
-        + t(lang, "edit_old_label") + "\n" + old_block + "\n"
-        + t(lang, "edit_new_label") + "\n" + new_block
+        + t(lang, "edit_new_label") + "\n" + new_block + "\n\n"
+        + t(lang, "edit_old_label") + "\n" + old_block
         + await _watermark(bot, lang)
     )
-    await safe_send(bot, owner_id, body)
+    await safe_send(bot, owner_id, body, disable_notification=silent)
 
 
 # ---------------------------------------------------------------- 3. УДАЛЕНИЕ
@@ -290,6 +299,12 @@ async def on_deleted_messages(event: BusinessMessagesDeleted, bot: Bot, db: Data
     if not await db.has_active_subscription(owner_id):
         await send_renew_reminder(bot, db, config, owner_id)
         return
+
+    # Настройки уведомлений: удаления можно отключить, тихий режим — без звука
+    prefs = await db.get_prefs(owner_id)
+    if not prefs["notify_deleted"]:
+        return  # запись помечена удалённой (видна в «Истории»), но уведомление не шлём
+    silent = bool(prefs["silent_mode"])
 
     lang = normalize_lang(user["language"])
     tz = config.timezone
@@ -329,17 +344,20 @@ async def on_deleted_messages(event: BusinessMessagesDeleted, bot: Bot, db: Data
     # Текстовые удаления: шапка, под ней содержимое под спойлером, внизу тег бота
     for row in text_rows[:MAX_DETAILED_ENTRIES]:
         block = _quote(lang, row.get("text"), text_limit)
-        await safe_send(bot, owner_id, _head(row) + (f"\n\n{block}" if block else "") + wm)
+        await safe_send(bot, owner_id, _head(row) + (f"\n\n{block}" if block else "") + wm,
+                        disable_notification=silent)
 
     # Медиа: сам файл — главный элемент, под спойлером; подпись = шапка + содержимое + тег
     for row in media_rows[:MAX_MEDIA_RESEND]:
         block = _quote(lang, row.get("text"), MAX_CAPTION)
         caption = _head(row) + (f"\n\n{block}" if block else "") + wm
         ok = await send_saved_media(bot, owner_id, row["content_type"], row["file_id"],
-                                    caption=caption, local_path=row.get("media_path"))
+                                    caption=caption, local_path=row.get("media_path"),
+                                    disable_notification=silent)
         if not ok:
             await safe_send(bot, owner_id, _head(row) + (f"\n\n{block}" if block else "")
-                            + "\n" + t(lang, "deleted_media_unavailable", count=1) + wm)
+                            + "\n" + t(lang, "deleted_media_unavailable", count=1) + wm,
+                            disable_notification=silent)
 
     # Остаток: неизвестные (без деталей) и то, что не поместилось в подробный показ
     shown = min(len(text_rows), MAX_DETAILED_ENTRIES) + min(len(media_rows), MAX_MEDIA_RESEND)
@@ -347,9 +365,11 @@ async def on_deleted_messages(event: BusinessMessagesDeleted, bot: Bot, db: Data
     if remainder > 0:
         if shown == 0:
             await safe_send(bot, owner_id, t(lang, "deleted_unknown_compact",
-                                             count=remainder, deleted=deleted_text) + wm)
+                                             count=remainder, deleted=deleted_text) + wm,
+                            disable_notification=silent)
         else:
-            await safe_send(bot, owner_id, t(lang, "deleted_more_compact", count=remainder) + wm)
+            await safe_send(bot, owner_id, t(lang, "deleted_more_compact", count=remainder) + wm,
+                            disable_notification=silent)
 
     # «Надгробия» для неизвестных удалённых id, чтобы дубликат события не повторил уведомление
     if unknown:

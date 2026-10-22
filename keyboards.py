@@ -43,11 +43,30 @@ def main_menu_kb(lang: str) -> InlineKeyboardMarkup:
 
 
 def settings_kb(lang: str) -> InlineKeyboardMarkup:
-    """Настройки: выбор языка, помощь, назад."""
+    """Настройки: уведомления, язык, экспорт, помощь, назад."""
     kb = InlineKeyboardBuilder()
+    kb.button(text=t(lang, "btn_notifs"), callback_data=MenuCb(action="notif"))
     kb.button(text=t(lang, "btn_lang"), callback_data=MenuCb(action="lang"))
+    kb.button(text=t(lang, "btn_export"), callback_data=MenuCb(action="export"))
     kb.button(text=t(lang, "btn_help"), callback_data=MenuCb(action="help"))
     kb.button(text=t(lang, "btn_back"), callback_data=MenuCb(action="main"))
+    kb.adjust(1)
+    return kb.as_markup()
+
+
+def notif_kb(lang: str, prefs: dict) -> InlineKeyboardMarkup:
+    """Переключатели уведомлений: удаления / правки / тихий режим (с индикатором вкл/выкл)."""
+    def sw(val: int) -> str:
+        return t(lang, "sw_on") if val else t(lang, "sw_off")
+
+    kb = InlineKeyboardBuilder()
+    kb.button(text=f"{t(lang, 'nt_deleted')}  {sw(prefs['notify_deleted'])}",
+              callback_data=MenuCb(action="nt_deleted"))
+    kb.button(text=f"{t(lang, 'nt_edited')}  {sw(prefs['notify_edited'])}",
+              callback_data=MenuCb(action="nt_edited"))
+    kb.button(text=f"{t(lang, 'nt_silent')}  {sw(prefs['silent_mode'])}",
+              callback_data=MenuCb(action="nt_silent"))
+    kb.button(text=t(lang, "btn_back"), callback_data=MenuCb(action="settings"))
     kb.adjust(1)
     return kb.as_markup()
 

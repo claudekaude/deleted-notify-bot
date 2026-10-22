@@ -137,10 +137,11 @@ TEXTS: dict[str, str] = {
     "deleted_unknown_compact": "🗑 Удалено сообщений: {count} (детали недоступны) · {deleted}",
     "deleted_more_compact": "… и ещё {count}",
     # Редактирование
-    "edit_head": "✏️ <b>{author}</b> изменил сообщение",
+    "edit_head": "✏️ <b>{author}</b> отредактировал сообщение",
+    "edit_head_media": "✏️ <b>{author}</b> изменил подпись · {type}",
     "edit_time": "🕒 {edited}",
-    "edit_old_label": "Было:",
-    "edit_new_label": "Стало:",
+    "edit_new_label": "🆕 Новое:",
+    "edit_old_label": "📜 Старое:",
     "edit_old_unavailable": "<i>прежняя версия недоступна</i>",
     "deleted_no_text": "📎 Вложение: {type}",
     "deleted_media_caption": "🗑 Удалённое медиа\n⤷ {author}\n⏱ {deleted}",
@@ -225,5 +226,18 @@ TEXTS: dict[str, str] = {
         "Готово — бот начнёт присылать уведомления. Нужен Telegram Premium."
     ),
     "btn_connect_open": "👉 Открыть бота",
+    # --- уведомления (настройки) и экспорт
+    "btn_notifs": "🔔 Уведомления",
+    "notif_title": "🔔 <b>Уведомления</b>\n\nВыберите, о чём присылать уведомления. Настройки сохраняются.",
+    "nt_deleted": "🗑 Удаления",
+    "nt_edited": "✏️ Правки",
+    "nt_silent": "🔕 Тихий режим (без звука)",
+    "sw_on": "✅",
+    "sw_off": "❌",
+    "btn_export": "📦 Экспорт данных",
+    "export_building": "📦 Готовлю экспорт, секунду…",
+    "export_empty": "Пока нет сохранённых сообщений для экспорта.",
+    "export_caption": "📦 Ваш архив: {count} сообщ. Внутри HTML, TXT и JSON.",
+    "export_error": "⚠️ Не удалось собрать экспорт. Попробуйте позже.",
     "error_generic": "⚠️ Произошла ошибка. Попробуйте ещё раз позже.",
 }
