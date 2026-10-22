@@ -1,0 +1,7 @@
+aiogram==3.31.0
+aiosqlite==0.22.1
+python-dotenv==1.2.4
+# База часовых поясов (нужна на Windows, где её нет в системе)
+tzdata>=2024.1
+# Поддержка прокси (socks5/http) для доступа к Telegram
+aiohttp-socks>=0.10
