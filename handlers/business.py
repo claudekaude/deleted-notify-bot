@@ -60,6 +60,30 @@ def _html_content(message: Message, owner_id: int, config: Config) -> str | None
     return None
 
 
+def _forward_label(message: Message) -> str | None:
+    """
+    Источник пересылки для входящего пересланного сообщения (forward_origin).
+    Это единственная «пересылка», доступная боту: когда ВЛАДЕЛЬЦУ прислали уже
+    пересланное сообщение. Факт пересылки сообщения собеседником КУДА-ТО наружу
+    Telegram не сообщает никому (ни Bot API, ни MTProto).
+    """
+    origin = message.forward_origin
+    if origin is None:
+        return None
+    from aiogram.types import (MessageOriginUser, MessageOriginHiddenUser,
+                               MessageOriginChat, MessageOriginChannel)
+    if isinstance(origin, MessageOriginUser):
+        u = origin.sender_user
+        return ("@" + u.username) if u.username else full_name(u.first_name, u.last_name) or str(u.id)
+    if isinstance(origin, MessageOriginHiddenUser):
+        return origin.sender_user_name
+    if isinstance(origin, MessageOriginChat):
+        return origin.sender_chat.title or origin.sender_chat.full_name
+    if isinstance(origin, MessageOriginChannel):
+        return origin.chat.title
+    return None
+
+
 def _extract_file_id(message: Message) -> str | None:
     """file_id основного медиа сообщения (не сам файл). None — если медиа нет."""
     if message.photo:
@@ -203,6 +227,7 @@ async def on_business_message(message: Message, bot: Bot, db: Database, config: 
             file_id=file_id,
             media_path=media_path,
             media_size=media_size,
+            forward_from=_forward_label(message),
         )
     except Exception:
         log.exception("Не удалось сохранить метаданные сообщения %s/%s", message.chat.id, message.message_id)
@@ -338,8 +363,12 @@ async def on_deleted_messages(event: BusinessMessagesDeleted, bot: Bot, db: Data
         """Шапка уведомления: автор + действие (📷 для медиа, 🗑 для текста) и время."""
         author = fmt_person_short(row["from_user_id"], row["from_username"], row["from_name"])
         key = "del_head_media" if row.get("content_type") in VISUAL_TYPES else "del_head"
-        return (t(lang, key, author=author) + "\n"
+        head = (t(lang, key, author=author) + "\n"
                 + t(lang, "del_time", sent=fmt_ts(row["sent_at"], tz), deleted=deleted_text))
+        if row.get("forward_from"):  # сообщение было переслано владельцу от кого-то
+            from html import escape as _esc
+            head += "\n" + t(lang, "fwd_from", src=_esc(row["forward_from"]))
+        return head
 
     # Текстовые удаления: шапка, под ней содержимое под спойлером, внизу тег бота
     for row in text_rows[:MAX_DETAILED_ENTRIES]:

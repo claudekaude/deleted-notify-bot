@@ -69,6 +69,7 @@ async def build_export(db: Database, owner_user_id: int, tz: ZoneInfo, dest_dir:
             "from_username": r["from_username"],
             "from_name": r["from_name"],
             "content_type": r["content_type"],
+            "forward_from": r["forward_from"],
             "text": _plain(r["text"]),
             "media_file": os.path.basename(r["media_path"]) if r.get("media_path") else None,
             "sent_at": _fmt(r["sent_at"], tz),

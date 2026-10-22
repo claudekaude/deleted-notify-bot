@@ -210,6 +210,9 @@ async def on_item(callback: CallbackQuery, callback_data: HistCb, bot: Bot,
     lines.append(t(lang, "history_item_when", when=fmt_ts(row["sent_at"], config.timezone), status=status))
     if row["is_deleted"] and row["deleted_at"]:
         lines.append(t(lang, "history_item_deleted", when=fmt_ts(row["deleted_at"], config.timezone)))
+    if row.get("forward_from"):
+        from html import escape as _esc
+        lines.append(t(lang, "fwd_from", src=_esc(row["forward_from"])))
     if row["text"]:
         lines.append(t(lang, "history_item_text", text=escape(row["text"][:3500])))
     elif row["content_type"] and row["content_type"] != "text":

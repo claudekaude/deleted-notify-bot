@@ -133,6 +133,7 @@ TEXTS: dict[str, str] = {
     # Удаление
     "del_head": "🗑 <b>{author}</b> удалил сообщение",
     "del_head_media": "📷 <b>{author}</b> удалил медиа",
+    "fwd_from": "↪️ переслано от {src}",
     "del_time": "🕒 {sent} → 🗑 {deleted}",
     "deleted_unknown_compact": "🗑 Удалено сообщений: {count} (детали недоступны) · {deleted}",
     "deleted_more_compact": "… и ещё {count}",

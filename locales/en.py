@@ -130,6 +130,7 @@ TEXTS: dict[str, str] = {
     "watermark": "\n\n<a href=\"https://t.me/{bot}\">@{bot}</a>",
     "del_head": "🗑 <b>{author}</b> deleted a message",
     "del_head_media": "📷 <b>{author}</b> deleted media",
+    "fwd_from": "↪️ forwarded from {src}",
     "del_time": "🕒 {sent} → 🗑 {deleted}",
     "deleted_unknown_compact": "🗑 Deleted messages: {count} (details unavailable) · {deleted}",
     "deleted_more_compact": "… and {count} more",

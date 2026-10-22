@@ -96,6 +96,7 @@ CREATE TABLE IF NOT EXISTS messages (
     file_id                TEXT,                 -- file_id медиа (ссылка Telegram)
     media_path             TEXT,                 -- путь к скачанному файлу на диске
     media_size             INTEGER,              -- размер файла (для проверки целостности)
+    forward_from           TEXT,                 -- источник пересылки (если сообщение переслано)
     is_deleted             INTEGER NOT NULL DEFAULT 0,  -- 1 = сообщение удалено собеседником
     deleted_at             INTEGER,              -- когда замечено удаление
     sent_at                INTEGER NOT NULL,
@@ -176,7 +177,7 @@ class Database:
         # name -> тип колонки
         new_cols = {"content_type": "TEXT", "text": "TEXT", "file_id": "TEXT",
                     "is_deleted": "INTEGER NOT NULL DEFAULT 0", "deleted_at": "INTEGER",
-                    "media_path": "TEXT", "media_size": "INTEGER"}
+                    "media_path": "TEXT", "media_size": "INTEGER", "forward_from": "TEXT"}
         for name, coltype in new_cols.items():
             if name not in columns:
                 await self.conn.execute(f"ALTER TABLE messages ADD COLUMN {name} {coltype}")
@@ -452,9 +453,10 @@ class Database:
         file_id: str | None = None,
         media_path: str | None = None,
         media_size: int | None = None,
+        forward_from: str | None = None,
     ) -> None:
         """
-        Сохраняет метаданные, текст, file_id и путь к скачанному медиа.
+        Сохраняет метаданные, текст, file_id, путь к медиа и источник пересылки.
         file_id — ссылка Telegram (запасной способ), media_path — локальная копия файла.
         """
         await self._execute(
@@ -462,13 +464,13 @@ class Database:
             INSERT INTO messages
                 (owner_user_id, business_connection_id, chat_id, message_id,
                  from_user_id, from_username, from_name, content_type, text, file_id,
-                 media_path, media_size, sent_at, saved_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 media_path, media_size, forward_from, sent_at, saved_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(owner_user_id, chat_id, message_id) DO NOTHING
             """,
             (owner_user_id, connection_id, chat_id, message_id,
              from_user_id, from_username, from_name, content_type, text, file_id,
-             media_path, media_size, sent_at, now_ts()),
+             media_path, media_size, forward_from, sent_at, now_ts()),
         )
 
     async def update_message_text(self, owner_user_id: int, chat_id: int, message_id: int,
